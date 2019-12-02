@@ -1,97 +1,91 @@
 const express = require("express");
-
-
+const pool = require("./connection");
 // create a router to handle the fish related URLs (anything with /fish)
 const cartRoutes = express.Router();
 
-
-const cartItems = [
-    { id: 1, product: "coffee", price: 5, quantity: 2 },
-    { id: 2, product: "tea", price: 4, quantity: 1 },
-    { id: 3, product: "juice", price: 2, quantity: 5 }
-]
-
-let nextID = 4;
 
 cartRoutes.get("/", (req, res) => {
     res.send("visit /cart-items to view the cart items!")
 });
 
+
+// GET / display the cart-items
 cartRoutes.get("/cart-items", (req, res) => {
-    // when the route is visited, the get returns the entire array as a json format
-    res.json(cartItems);
-    res.status(200);
+    let sql = "SELECT * FROM shopping_cart";
+    pool.query(sql).then(result => {
+        console.log(result.rows);
+        res.json(result.rows);
+    })
 
 });
 
-
+// GET / display the cart-items by specific ID
 cartRoutes.get("/cart-items/:id", (req, res) => {
-    // id will return as a string from the request
-    // this converts it to an int
     const id = parseInt(req.params.id);
-    // any console logs in the server file will show up where you run it
-    // in this case, it will run in the terminal when you go to the uRL
-    console.log(id);
-
-    // find a fish with the matching id and put in a variable
-    const foundItem = cartItems.find(item => item.id === id);
-    // if the foundFish exists
-    if (foundItem) {
-        // send that object
-        res.json(foundItem);
-        res.status(200);
-    }
-    else {
-        res.status(404);
-        res.send(`ID ${id} Not Found`);
-    }
+    let params = [id];
+    let sql = "SELECT * FROM shopping_cart WHERE id = $1::int";
+    pool.query(sql, params).then(result => {
+        if (result.rows.length !== 0) {
+            res.json(result.rows[0]);
+        }
+        else {
+            res.status(404);
+            res.send("No item found");
+        }
+    })
 
 });
 
 
+// POST / post to the DB API
 
 cartRoutes.post("/cart-items", (req, res) => {
-    // the data is found on the jSON body
     const item = req.body;
-    item.id = nextID++;
-    cartItems.push(item);
-
-
-    res.status(201);
-    res.json(item);
+    let sql = `INSERT into shopping_cart (product, price, quantity)
+        VALUES ($1::text, $2::int, $3::int) RETURNING *`;
+    let params = [item.product, item.price, item.quantity];
+    pool.query(sql, params).then(result => {
+        res.status(201);
+        res.json(result.rows[0])
+    });
 
 });
 
 
+
+
+// PUT / update items in the DB
 cartRoutes.put("/cart-items/:id", (req, res) => {
-    // puts the id from the request in a paramter
     const id = parseInt(req.params.id);
-    // puts the object info from the request into a parameter
     const item = req.body;
-    // sets the object id to the request id
-    item.id = id;
-    // Find Index by ID
-    // finds the index of the cart item matching the id
-    const index = cartItems.findIndex(i => i.id === id);
-    // Replace at index
-    cartItems.splice(index, 1, item);
-    res.json(item);
-    res.status(200);
+    const sql = `UPDATE shopping_cart
+                SET product=$1::text, price=$2::int, quantity=$3::int
+                WHERE id=$4::INT RETURNING *`;
+    const params = [item.product, item.price, item.quantity, id];
+
+    pool.query(sql, params).then(result => {
+        res.status(200);
+        res.send(result.rows[0]);
+    });
+
 });
 
 
 
+
+
+// DELETE / remove items from the DB
 cartRoutes.delete("/cart-items/:id", (req, res) => {
     // puts the id from the request into a paramter
     const id = parseInt(req.params.id);
-    // sets the index equal to the index of the item matching that id
-    const index = cartItems.findIndex(item => item.id === id);
-    // If found...(then the index isn't -1)
-    if (index !== -1) {
-        cartItems.splice(index, 1);
-    }
-    // Set response code to 204. Send no content.
-    res.sendStatus(204);
+    const params = [id];
+    let sql = "DELETE from shopping_cart WHERE id = $1::int";
+    pool.query(sql, params).then(result => {
+        res.status(204);
+        res.send();
+    })
+
+
 });
 
 
