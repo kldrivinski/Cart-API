@@ -1,13 +1,20 @@
 // requires the installed pg module
 // destructured, only take part of the export from pg called Pool
 const { Pool } = require("pg");
-// creates credentials as an object of an instance of the class Pool
-const credentials = new Pool({
-    user: "postgres",
-    password: "ksmoots42",
-    host: "localhost",
-    port: 5432,
-    database: "ExpressShopDB", // select the database to use
-    ssl: false
+
+try {
+    // When not running via Heroku, this will load the .env file.
+    require('dotenv').config();
+} catch (e) {
+    // When running with Heroku, dotenv doesn't need to be available.
+}
+
+const connectionString = process.env.DATABASE_URL;
+
+const connectionString = process.env.DATABASE_URL;
+const pool = new Pool({
+    connectionString: connectionString,
+    ssl: !connectionString.includes('localhost')
 });
-module.exports = credentials;
+
+module.exports = pool;

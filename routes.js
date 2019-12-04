@@ -11,7 +11,7 @@ cartRoutes.get("/", (req, res) => {
 
 // GET / display the cart-items
 cartRoutes.get("/cart-items", (req, res) => {
-    let sql = "SELECT * FROM shopping_cart";
+    let sql = "SELECT * FROM shopping_cart Order By ID";
     pool.query(sql).then(result => {
         console.log(result.rows);
         res.json(result.rows);
